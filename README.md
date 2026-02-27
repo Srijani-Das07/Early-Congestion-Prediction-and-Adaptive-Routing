@@ -134,7 +134,7 @@ python run.py
 ```
 ### Running the Live Demo (Optional)
 
-Open `demo.html` in any browser — no installation required. Use the sliders to control traffic rates per node in real time and watch the routing adapt live.
+Open `demo.html` in any browser. No installation required. Use the sliders to control traffic rates per node in real time and watch the routing adapt live.
 
 ---
 
@@ -206,4 +206,4 @@ Compared to no early prediction:
 
 ---
 
-*This project was built as part of a Computer Networks course to demonstrate early congestion prediction using traffic trend analysis — without relying on packet loss as the primary congestion signal.*
+*This project was built as part of a Computer Networks course to demonstrate early congestion prediction using traffic trend analysis, without relying on packet loss as the primary congestion signal.*
