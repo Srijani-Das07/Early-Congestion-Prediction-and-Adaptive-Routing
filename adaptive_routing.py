@@ -9,15 +9,21 @@ class AdaptiveRouter:
         self.monitors = monitors  # dict: {node_id: NodeMonitor}
 
     def path_cost(self, path):
-        """Calculate total congestion score along a path."""
-        total_score = 0
+        """
+        Calculate routing cost along a path using prediction-aware scores.
+        Predicted nodes cost 1 — rerouting happens here (EARLY, before congestion).
+        Congested nodes cost 3 — strongly avoided.
+        Normal nodes cost 0.
+        This is what makes routing adaptive AND predictive.
+        """
+        total = 0
         for node in path:
             if node in self.monitors:
-                total_score += self.monitors[node].congestion_score
-        return total_score
+                total += self.monitors[node].get_routing_score()
+        return total
 
     def find_best_path(self, source, destination):
-        """Find the least congested path from source to destination."""
+        """Find the least congested path, rerouting at prediction stage."""
         all_paths = list(nx.all_simple_paths(self.network, source, destination))
 
         if not all_paths:
@@ -30,26 +36,43 @@ class AdaptiveRouter:
         print(f'\nAll paths from Node {source} to Node {destination}:')
         for path in all_paths:
             cost = self.path_cost(path)
-            marker = ' <-- BEST (least congested)' if path == best_path else ''
-            print(f'  Path {path}  |  Congestion Cost = {cost}{marker}')
+            # Show why each path was scored the way it was
+            node_states = []
+            for n in path:
+                if n in self.monitors:
+                    m = self.monitors[n]
+                    if m.congested:
+                        node_states.append(f'N{n}[CONGESTED]')
+                    elif m.predicted:
+                        node_states.append(f'N{n}[PREDICTED]')
+                    else:
+                        node_states.append(f'N{n}[OK]')
+            marker = ' <-- BEST PATH' if path == best_path else ''
+            print(f'  {" -> ".join(node_states)}  |  Cost={cost}{marker}')
 
         return best_path
 
 
 if __name__ == '__main__':
-    print("--- Testing Adaptive Routing ---")
+    print("--- Testing Adaptive Routing with Early Prediction ---\n")
 
     network = create_network()
     monitors = {n: NodeMonitor(n) for n in network.nodes()}
 
-    # Simulate node 2 being congested
-    monitors[2].update(queue_length=15, delay=0.09, traffic_rate=95)
+    # Node 2: in EARLY PREDICTION stage (not yet congested but trending there)
+    monitors[2].update(queue_length=7, delay=0.035, traffic_rate=60)
     monitors[2].predict_congestion()
 
-    # Simulate node 4 being slightly busy
-    monitors[4].update(queue_length=8, delay=0.03, traffic_rate=60)
+    # Node 4: fully congested
+    monitors[4].update(queue_length=15, delay=0.09, traffic_rate=95)
     monitors[4].predict_congestion()
+
+    print("Node states before routing:")
+    for n, m in monitors.items():
+        m.report()
 
     router = AdaptiveRouter(network, monitors)
     best = router.find_best_path(1, 6)
     print(f'\nChosen path: {best}')
+    print('\nNote: Rerouting triggered by PREDICTION on Node 2,')
+    print('before it ever became fully congested.')
