@@ -24,7 +24,11 @@ class AdaptiveRouter:
 
     def find_best_path(self, source, destination):
         """Find the least congested path, rerouting at prediction stage."""
-        all_paths = list(nx.all_simple_paths(self.network, source, destination))
+        try:
+            all_paths = list(nx.all_simple_paths(self.network, source, destination))
+        except nx.NetworkXNoPath:
+            print(f'No path found between {source} and {destination}!')
+            return None
 
         if not all_paths:
             print(f'No path found between {source} and {destination}!')
@@ -42,9 +46,9 @@ class AdaptiveRouter:
                 if n in self.monitors:
                     m = self.monitors[n]
                     if m.congested:
-                        node_states.append(f'N{n}[CONGESTED]')
+                        node_states.append(f'N{n}[CONG]')
                     elif m.predicted:
-                        node_states.append(f'N{n}[PREDICTED]')
+                        node_states.append(f'N{n}[PRED]')
                     else:
                         node_states.append(f'N{n}[OK]')
             marker = ' <-- BEST PATH' if path == best_path else ''
@@ -61,11 +65,9 @@ if __name__ == '__main__':
 
     # Node 2: in EARLY PREDICTION stage (not yet congested but trending there)
     monitors[2].update(queue_length=7, delay=0.035, traffic_rate=60)
-    monitors[2].predict_congestion()
 
     # Node 4: fully congested
     monitors[4].update(queue_length=15, delay=0.09, traffic_rate=95)
-    monitors[4].predict_congestion()
 
     print("Node states before routing:")
     for n, m in monitors.items():
