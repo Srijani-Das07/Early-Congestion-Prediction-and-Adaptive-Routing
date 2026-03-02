@@ -20,10 +20,16 @@ class NodeMonitor:
         self.predicted = False   # True = heading toward congestion (early warning)
         self.congested = False   # True = actually congested (hard threshold breached)
 
-    def update(self, queue_length, delay, traffic_rate):
-        self.queue_length = queue_length
-        self.delay = delay
-        self.traffic_rate = traffic_rate
+    def update(self, queue_length=None, delay=None, traffic_rate=None):
+        """Update monitor with new values"""
+        if queue_length is not None:
+            self.queue_length = queue_length
+        if delay is not None:
+            self.delay = delay
+        if traffic_rate is not None:
+            self.traffic_rate = traffic_rate
+        # Auto-predict after update
+        self.predict_congestion()
 
     def predict_congestion(self):
         """
@@ -87,19 +93,16 @@ if __name__ == '__main__':
     # Normal node
     m1 = NodeMonitor(1)
     m1.update(queue_length=3, delay=0.01, traffic_rate=20)
-    m1.predict_congestion()
     m1.report()
 
     # Node in EARLY PREDICTION stage (soft thresholds hit, hard not yet)
     m2 = NodeMonitor(2)
     m2.update(queue_length=7, delay=0.035, traffic_rate=60)
-    m2.predict_congestion()
     m2.report()
 
     # Fully congested node (hard thresholds hit)
     m3 = NodeMonitor(3)
     m3.update(queue_length=12, delay=0.06, traffic_rate=85)
-    m3.predict_congestion()
     m3.report()
 
     print("\nRouting scores (used to pick best path):")
