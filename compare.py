@@ -8,68 +8,29 @@ Runs the simulation TWICE with identical traffic and random seed:
           reducing queue growth on heavy nodes.
 """
 
+import networkx as nx
 import random
 import simpy
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 from network_setup import create_network
+from congestion_monitor import NodeMonitor
 
 RANDOM_SEED   = 42
 SIM_DURATION  = 80
 TRAFFIC_RATES = {1: 5, 2: 15, 3: 5, 4: 12, 5: 5, 6: 5}
 
-# Hard thresholds
-QUEUE_HARD = 10
-DELAY_HARD = 0.05
-RATE_HARD  = 80
+# Base drain rates per node - calculated dynamically
+BASE_DRAIN = {}
+for node_id, rate in TRAFFIC_RATES.items():
+    BASE_DRAIN[node_id] = rate + 2  # Drain 2 more than arrival
+    if rate > 10:
+        BASE_DRAIN[node_id] = rate + 3  # Extra buffer for busy nodes
 
-# Soft thresholds (early prediction only)
+# Soft / hard queue thresholds (used for plotting and comparison)
 QUEUE_SOFT = 6
-DELAY_SOFT = 0.03
-RATE_SOFT  = 55
-
-# Base drain rates per node (packets drained per arrival event)
-BASE_DRAIN = {1: 4, 2: 8, 3: 4, 4: 7, 5: 4, 6: 4}
-
-
-class NodeMonitor:
-    def __init__(self, node_id, early_prediction=True):
-        self.node_id          = node_id
-        self.early_prediction = early_prediction
-        self.queue_length     = 0
-        self.delay            = 0.0
-        self.traffic_rate     = 0
-        self.congestion_score = 0
-        self.predicted        = False
-        self.congested        = False
-        self.packets_dropped  = 0
-        self.rerouted_away    = False  # True = traffic being redirected away from this node
-
-    def update_and_check(self, rate):
-        hard = 0
-        if self.queue_length > QUEUE_HARD: hard += 1
-        if self.delay        > DELAY_HARD: hard += 1
-        if self.traffic_rate > RATE_HARD:  hard += 1
-        self.congestion_score = hard
-        self.congested        = hard >= 2
-
-        if self.early_prediction:
-            soft = 0
-            if self.queue_length > QUEUE_SOFT: soft += 1
-            if self.delay        > DELAY_SOFT: soft += 1
-            if self.traffic_rate > RATE_SOFT:  soft += 1
-            self.predicted = (soft >= 2) and not self.congested
-        else:
-            self.predicted = False
-
-    def get_routing_score(self):
-        if self.congested: return 3
-        if self.predicted: return 1
-        return 0
-
-
-import networkx as nx
+QUEUE_HARD = 10
 
 class Router:
     def __init__(self, network, monitors):
@@ -89,7 +50,7 @@ def run_sim(early_prediction, seed):
     random.seed(seed)
     env      = simpy.Environment()
     network  = create_network()
-    monitors = {n: NodeMonitor(n, early_prediction) for n in network.nodes()}
+    monitors = {n: NodeMonitor(n) for n in network.nodes()}
     router   = Router(network, monitors)
 
     results = {
@@ -101,6 +62,7 @@ def run_sim(early_prediction, seed):
         'congested_events': 0,
         'reroutes':         0,
         'reroute_times':    [],
+        'rerouted_packets': 0,
     }
 
     prev_path = [None]
@@ -109,37 +71,45 @@ def run_sim(early_prediction, seed):
         while True:
             yield env.timeout(random.expovariate(rate))
 
-            # Key difference: if early prediction has rerouted traffic away from
-            # this node, incoming rate is effectively reduced — model this as
-            # extra drain on predicted/congested nodes
-            extra_drain = 0
+            # if we're doing early prediction and the node is currently
+            # predicted or congested, assume SDN-like controller reroutes the
+            # incoming packet immediately, so it never enters this queue.
             if early_prediction and (monitor.predicted or monitor.congested):
-                extra_drain = random.randint(2, 5)  # traffic being redirected away
+                results['rerouted_packets'] += 1
+                # still update traffic_rate noise for consistency
+                monitor.traffic_rate  = int(rate * 10) + random.randint(-3, 3)
+                continue
 
             monitor.queue_length += 1
             monitor.traffic_rate  = int(rate * 10) + random.randint(-3, 3)
             monitor.delay         = monitor.queue_length * 0.005
 
             # Baseline: congested nodes keep receiving full traffic — drop packets
-            if not early_prediction and monitor.queue_length > QUEUE_HARD + 3:
-                monitor.packets_dropped += 1
+            if not early_prediction and monitor.queue_length > 10 + 8:
                 results['dropped_total'] += 1
-                monitor.queue_length -= 1
-
-            # Early prediction: rerouted nodes receive less traffic
-            monitor.queue_length = max(0, monitor.queue_length - extra_drain)
-
-            monitor.update_and_check(rate)
+                monitor.queue_length = max(0, monitor.queue_length - 1)
 
     def drain_and_record():
         while True:
             yield env.timeout(1.0)
 
             for n, monitor in monitors.items():
+
                 # Normal drain — same for both runs
                 drain = random.randint(BASE_DRAIN[n] - 1, BASE_DRAIN[n] + 1)
-                monitor.queue_length = max(0, monitor.queue_length - drain)
-                monitor.update_and_check(TRAFFIC_RATES[n])
+
+                # If early prediction is enabled and this node is predicted/congested,
+                # model traffic being redirected away by applying an extra small drain.
+                extra_drain = 0
+                if early_prediction and (monitor.predicted or monitor.congested):
+                    extra_drain = random.randint(1, 3)
+
+                monitor.queue_length = max(0, monitor.queue_length - drain - extra_drain)
+
+                # Recompute instantaneous metrics used by prediction
+                monitor.traffic_rate = int(TRAFFIC_RATES[n] * 10) + random.randint(-3, 3)
+                monitor.delay = monitor.queue_length * 0.005
+                monitor.predict_congestion()  # Now this works with current values
 
                 results['queue_history'][n].append(monitor.queue_length)
                 results['delay_history'][n].append(monitor.delay)
@@ -263,8 +233,13 @@ def plot_comparison(baseline, predicted):
     ax_sum.axis('off')
 
     def pct(base, pred):
-        if base == 0: return 0.0
-        return round((base - pred) / base * 100, 1)
+        if base == 0: 
+            return 0.0
+        if base < 0.01:  # Handle very small numbers
+            return 0.0
+        improvement = (base - pred) / base * 100
+        # Cap between -100% and +100%
+        return max(min(improvement, 100.0), -100.0)
 
     ax_sum.text(0.5, 0.97, 'Improvement with Early Prediction',
                 ha='center', va='top', color='white', fontsize=10, fontweight='bold',
