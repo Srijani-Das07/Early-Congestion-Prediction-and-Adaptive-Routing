@@ -441,6 +441,13 @@
       <button class="btn btn-reset" onclick="resetSim()">↺ RESET</button>
     </div>
 
+    <div class="metrics-strip" id="metricsStrip">
+      <div class="metric-box"><div class="metric-val">0</div><div class="metric-lbl">PACKETS</div></div>
+      <div class="metric-box"><div class="metric-val">0</div><div class="metric-lbl">REROUTES</div></div>
+      <div class="metric-box"><div class="metric-val">0</div><div class="metric-lbl">DROPS AVOIDED</div></div>
+      <div class="metric-box"><div class="metric-val">0</div><div class="metric-lbl">PATH COST</div></div>
+    </div>
+
     <div class="ctrl-section">
       <div class="ctrl-label">Traffic Rate per Node — drag right = more congestion</div>
       <div id="sliders"></div>
@@ -606,6 +613,15 @@ function tick() {
     const reason = bestPath.some(n => state[n].predicted) ? 'early prediction' : 'congestion detected';
     addLog(`↺ Rerouted via ${bestPath.join('→')} (triggered by ${reason})`, 'route');
   }
+
+  // Update metrics strip
+  const bestPathCost = pathCost(bestPath);
+  document.getElementById('metricsStrip').innerHTML = `
+    <div class="metric-box"><div class="metric-val">${totalPackets}</div><div class="metric-lbl">PACKETS</div></div>
+    <div class="metric-box"><div class="metric-val">${totalReroutes}</div><div class="metric-lbl">REROUTES</div></div>
+    <div class="metric-box"><div class="metric-val">${dropsAvoided}</div><div class="metric-lbl">DROPS AVOIDED</div></div>
+    <div class="metric-box"><div class="metric-val">${bestPathCost}</div><div class="metric-lbl">PATH COST</div></div>
+  `;
 
   // History
   timeLabels.push(simTime.toFixed(1));
