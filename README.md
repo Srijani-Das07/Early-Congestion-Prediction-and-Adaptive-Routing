@@ -4,6 +4,8 @@
 
 Traditional congestion control reacts after packet loss. This system predicts congestion at 60–70% utilization and reroutes traffic before performance degrades.
 
+[Live Demo](https://srijani-das07.github.io/Early-Congestion-Prediction-and-Adaptive-Routing/)
+
 ---
 
 ## Overview
