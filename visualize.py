@@ -6,8 +6,8 @@ from simulation import run_simulation
 from adaptive_routing import AdaptiveRouter
 
 
-def visualize(duration=100):
-    results, monitors = run_simulation(duration=duration)
+def visualize(duration=100, seed=42):
+    results, monitors = run_simulation(duration=duration, seed=seed)
     network = create_network()
     router = AdaptiveRouter(network, monitors)
     best_path = router.find_best_path(1, 6)
@@ -44,18 +44,19 @@ def visualize(duration=100):
     ax1.legend(handles=[green_patch, yellow_patch, red_patch, blue_patch], loc='lower right', fontsize=8)
     ax1.set_title('Network Topology\n(Yellow = Early Prediction, Route Already Switched)', fontsize=11)
 
-    # ── Plot 2: Queue Length — Nodes 2 and 4 ─────────────────
+    # ── Plot 2: Queue Length — All Nodes ─────────────────
     ax2 = axes[0, 1]
-    for node_id in [2, 4]:
+    node_ids = sorted(set(r['node'] for r in results))
+    for node_id in node_ids:
         times  = [r['time']  for r in results if r['node'] == node_id]
         queues = [r['queue'] for r in results if r['node'] == node_id]
-        ax2.plot(times, queues, label=f'Node {node_id}')
+        ax2.plot(times, queues, label=f'Node {node_id}', linewidth=1)
     ax2.axhline(y=6,  color='gold',   linestyle='--', linewidth=1.5, label='Prediction Threshold (Q=6)')
     ax2.axhline(y=10, color='tomato', linestyle='--', linewidth=1.5, label='Congestion Threshold (Q=10)')
     ax2.set_xlabel('Simulation Time')
     ax2.set_ylabel('Queue Length (packets)')
-    ax2.set_title('Queue Length — Heavy Nodes 2 & 4\nRerouting at Yellow Line, Not Red', fontsize=11)
-    ax2.legend(fontsize=8)
+    ax2.set_title('Queue Length — All Nodes\nRerouting at Yellow Line, Not Red', fontsize=11)
+    ax2.legend(fontsize=8, ncol=2)
     ax2.grid(True, alpha=0.3)
 
     # ── Plot 3: Prediction vs Congestion Events — ALL 6 NODES ─
@@ -88,12 +89,18 @@ def visualize(duration=100):
         elif m.predicted: colors.append('gold')
         else:             colors.append('lightgreen')
 
-    ax4.bar([f'Node {n}' for n in node_ids], avg_queues, color=colors, edgecolor='black')
+    bars = ax4.bar([f'Node {n}' for n in node_ids], avg_queues, color=colors, edgecolor='black')
     ax4.axhline(y=6,  color='gold',   linestyle='--', linewidth=1.5, label='Prediction Threshold')
     ax4.axhline(y=10, color='tomato', linestyle='--', linewidth=1.5, label='Congestion Threshold')
     ax4.set_ylabel('Average Queue Length')
     ax4.set_title('Average Queue Length Per Node — All 6 Nodes\n(Color = Final State: Green/Yellow/Red)', fontsize=11)
     ax4.legend(fontsize=8)
+    
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        ax4.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                f'{height:.1f}', ha='center', va='bottom', fontsize=9)
 
     plt.tight_layout()
     plt.savefig('results.png', dpi=150, bbox_inches='tight')
