@@ -120,8 +120,16 @@ Make sure you have Python 3.8 or higher installed. You can check by running:
 ```bash
 python --version
 ```
+### Step 1 — Fork & Clone the Repository
 
-### Step 1 — Install Dependencies
+First, fork the repository on GitHub, then clone it locally:
+
+```bash
+git clone https://github.com/YOUR-USERNAME/Early-Congestion-Prediction-and-Adaptive-Routing.git
+cd Early-Congestion-Prediction-and-Adaptive-Routing
+```
+
+### Step 2 — Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -129,14 +137,14 @@ pip install -r requirements.txt
 
 This installs: `networkx`, `simpy`, `matplotlib`.
 
-### Step 2 — Run Everything
+### Step 3 — Run Everything
 
 ```bash
 python run.py
 ```
 ### Running the Live Demo (Optional)
 
-Open `demo.html` in any browser. No installation required. Use the sliders to control traffic rates per node in real time and watch the routing adapt live.
+Open `index.html` in any browser or use the demo link provided in the description. No installation required. Use the sliders to control traffic rates per node in real time and watch the routing adapt live.
 
 ---
 
@@ -166,7 +174,19 @@ Open `demo.html` in any browser. No installation required. Use the sliders to co
 
 ---
 
-## Results
+## Key Results
+
+With early prediction enabled:
+
+- **Congestion events reduced by 50%**
+- **Average queue length reduced by 6-28% on most nodes**
+- **Node 2 (high traffic) showed 100% improvement** after early rerouting
+- **First reroute triggered at t=1.0s** (before any congestion occurred)
+- **Zero packet drops** in the prediction-enabled run
+
+---
+
+## Conclusion
 
 Compared to no early prediction:
 
