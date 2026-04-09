@@ -133,6 +133,7 @@ weight(u → v) = 1 + (20 if predicted) + (queue_length × 2)
 root/
 │
 ├── nodes_6/                   # Original 6-node version
+│   │──output figures/         # Contains result diagrams and graphs
 │   ├── network_setup.py       # Fixed graph (6 nodes, 7 edges)
 │   ├── congestion_monitor.py  # Two-stage prediction logic
 │   ├── adaptive_routing.py    # all_simple_paths + cost 0/1/3 scoring
@@ -140,15 +141,18 @@ root/
 │   ├── compare.py             # Baseline vs Early Prediction graphs
 │   ├── visualize.py           # 4-panel matplotlib output chart
 │   │──.gitignore  
+│   │── requirements.txt       # Python dependencies
 │   └── run.py                 # Single command to run 6 nodes network
 │
 ├── nodes_100/                 # Scaled 100-node version
+│   │──output figures/         # Contains result diagrams and graphs
 │   ├── network_setup.py       # Random geometric graph (100 nodes, degree-scaled capacity)
 │   ├── congestion_monitor.py  # Same thresholds, ∞ cost for congested nodes
 │   ├── adaptive_routing.py    # Dijkstra + hard block + dynamic queue cost
 │   ├── simulation.py          # SimPy simulation (~15 hot nodes)
 │   ├── compare.py             # Heatmap, CDF, timeline graphs
 │   ├── visualize.py           # Per-node visualisation helpers
+│   │── requirements.txt       # Python dependencies
 │   │──.gitignore  
 │   └── run.py                 # Single command to run 100 nodes network
 │
@@ -204,9 +208,9 @@ cd nodes_100
 python run.py
 ```
 
-### Running the Live Demo (Optional)
+### Running the Live Demo 
 
-Open `index.html` (inside either `nodes_6/` or `nodes_100/`) in any browser. No installation required. Use the sliders to control traffic rates per node in real time and watch the routing adapt live.
+Open `index.html` (inside the root folder) in any browser. No installation required. Use the sliders to control traffic rates per node in real time and watch the routing adapt live.
 
 ---
 
