@@ -11,11 +11,6 @@ env/
 .env/
 .venv/
 
-# Output files
-results.png
-*.png
-*.jpg
-
 # VS Code
 .vscode/
 
