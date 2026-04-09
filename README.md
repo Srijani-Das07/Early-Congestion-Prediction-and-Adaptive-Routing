@@ -139,10 +139,8 @@ root/
 │   ├── simulation.py          # SimPy simulation (Node 2 & 4 as hot nodes)
 │   ├── compare.py             # Baseline vs Early Prediction graphs
 │   ├── visualize.py           # 4-panel matplotlib output chart
-│   ├── run.py                 # Single command to run everything
-│   ├── index.html             # Live interactive browser demo
-│   ├── requirements.txt       # Python dependencies
-│   └── README.md
+│   │──.gitignore  
+│   └── run.py                 # Single command to run 6 nodes network
 │
 ├── nodes_100/                 # Scaled 100-node version
 │   ├── network_setup.py       # Random geometric graph (100 nodes, degree-scaled capacity)
@@ -151,12 +149,13 @@ root/
 │   ├── simulation.py          # SimPy simulation (~15 hot nodes)
 │   ├── compare.py             # Heatmap, CDF, timeline graphs
 │   ├── visualize.py           # Per-node visualisation helpers
-│   ├── run.py                 # Single command to run everything
-│   ├── index.html             # Live interactive browser demo
-│   ├── package-lock.json      # Frontend dependency lock file
-│   ├── requirements.txt       # Python dependencies
-│   └── README.md
+│   │──.gitignore  
+│   └── run.py                 # Single command to run 100 nodes network
 │
+│──.gitignore                  
+│── index.html                 # Live interactive browser demo
+│── requirements.txt           # Python dependencies
+│── package-lock.json          # Frontend dependency lock file
 └── README.md                  # This file
 ```
 
